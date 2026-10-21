@@ -246,7 +246,7 @@ fb_draw_menu(int countdown_secs)
  * candidate buffer offsets (prefixed A/B/C), then park the CPU.
  */
 void
-fb_halt_screen(uint32_t bg, const char *line1, const char *line2)
+fb_status_screen(uint32_t bg, const char *line1, const char *line2)
 {
 	static const char *labels[] = { "A", "B", "C" };
 
@@ -258,6 +258,12 @@ fb_halt_screen(uint32_t bg, const char *line1, const char *line2)
 		fb_text(fb, 60, 300, line1, 0xFFFFFFFF);
 		fb_text(fb, 60, 300 + CELL_H + SCALE, line2, 0xFFFFFFFF);
 	}
+}
+
+void
+fb_halt_screen(uint32_t bg, const char *line1, const char *line2)
+{
+	fb_status_screen(bg, line1, line2);
 
 	for (;;) {
 		__asm__ volatile("wfe");

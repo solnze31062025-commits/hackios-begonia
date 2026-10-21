@@ -99,6 +99,14 @@ typedef uint64_t addr64_t;
  */
 #define LOADER_VISUAL_ONLY       1
 
+/*
+ * Proof-of-execution mode: paint the screen, wait a few seconds and then
+ * power the SoC off through PSCI (SMC). If the phone stops rebooting (goes
+ * off or freezes) instead of looping, our code definitely executed - even
+ * with a completely dark screen.
+ */
+#define LOADER_EXEC_PROOF        1
+
 /* CPU topology (2x A76 + 6x A55, temporary assumption of 2 clusters). */
 #define BEGONIA_CPU_CLUSTER_0    0
 #define BEGONIA_CPU_CLUSTER_1    1
@@ -206,6 +214,7 @@ void uart_puthex(uint64_t v);
 void fb_instant_paint(void);
 void fb_probe_cycle(void);
 void fb_draw_menu(int countdown_secs);
+void fb_status_screen(uint32_t bg, const char *line1, const char *line2);
 void fb_halt_screen(uint32_t bg, const char *line1, const char *line2)
     __attribute__((noreturn));
 void fb_panic(const char *msg) __attribute__((noreturn));

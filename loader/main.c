@@ -244,6 +244,36 @@ fill_boot_args(uint64_t kernel_phys_base, uint64_t kernel_link_base)
 	ba->memSizeActual = BEGONIA_RAM_SIZE;
 }
 
+/* ------------------------------------------------------------------ */
+/* PSCI (device tree says compatible "arm,psci-1.0", method "smc")    */
+
+/* PSCI 0.2/1.0 function IDs. */
+#define PSCI_SYSTEM_OFF    0x84000008ULL
+#define PSCI_SYSTEM_RESET  0x84000009ULL
+
+/*
+ * SMC calls are handled by ARM Trusted Firmware at EL3. If ATF does not
+ * implement the call it returns an error code instead of powering off, so
+ * every caller keeps a "freeze" fallback.
+ */
+static int
+psci_call(uint64_t fn)
+{
+	register uint64_t x0 __asm__("x0") = fn;
+	__asm__ volatile("smc #0" : "+r"(x0) :: "x1", "x2", "x3", "memory");
+	return (int)x0;
+}
+
+static void
+psci_system_off(void)
+{
+	(void)psci_call(PSCI_SYSTEM_OFF);
+	/* ATF refused or the call returned: park the CPU instead of resetting. */
+	for (;;) {
+		__asm__ volatile("wfe");
+	}
+}
+
 static void
 report(const char *msg)
 {
@@ -262,7 +292,22 @@ loader_main(void)
 	fb_instant_paint();
 
 	uart_early_init();
-	report("HackiOS stage-2 loader (begonia) v0.4 (framebuffer measured)");
+	report("HackiOS stage-2 loader (begonia) v0.5 (v2 boot image + dtb)");
+
+#if LOADER_EXEC_PROOF
+	/*
+	 * Isolation test, no kernel involved:
+	 *   blue window  -> code executes
+	 *   green status -> framebuffer offsets
+	 *   power off    -> ATF/heartbeat still alive, i.e. we own the SoC
+	 * If LK refuses the image nothing of this happens and we get a loop.
+	 */
+	fb_wait_ms(1500);
+	fb_status_screen(0xFF0A7A0A, "LOADER RAN OK", "FB WINDOW A/B/C");
+	fb_wait_ms(2500);
+	report("proof mode: PSCI SYSTEM_OFF");
+	psci_system_off();
+#endif
 
 #if LOADER_VISUAL_ONLY
 	/* Keep the blue paint on screen briefly, then show the diagnostic

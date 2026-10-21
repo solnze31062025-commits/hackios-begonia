@@ -48,22 +48,32 @@ jobs:
       - name: Build XNU payload slot (placeholder while kernel CI is landing)
         run: |
           printf 'NOXNUKERNEL-BRING-UP-PLACEHOLDER' > tools/placeholder-kernel.bin
-      - name: Package boot.img
+      - name: Compress loader the way the stock image does
+        run: gzip -9 -n -c loader/loader.bin > loader/loader.bin.gz
+      - name: Package boot.img (gzip kernel, header v2 + stock dtb)
+        run: |
+          python3 tools/mk_bootimg.py \
+            --kernel loader/loader.bin.gz \
+            --ramdisk tools/placeholder-kernel.bin \
+            --dtb tools/stock-begonia.dtb \
+            --output hackios-begonia-boot.img
+      - name: Package boot.img (raw Image kernel, header v2 + stock dtb)
         run: |
           python3 tools/mk_bootimg.py \
             --kernel loader/loader.bin \
             --ramdisk tools/placeholder-kernel.bin \
-            --pagesize 2048 \
-            --kernel-offset 0x00080000 \
-            --ramdisk-offset 0x07c80000 \
-            --tags-offset 0x0bc80000 \
-            --output hackios-begonia-boot.img
-      - name: Verify packaged image (fails if LK would reject it)
-        run: python3 tools/inspect_boot.py hackios-begonia-boot.img
+            --dtb tools/stock-begonia.dtb \
+            --output hackios-begonia-boot-raw.img
+      - name: Verify packaged images (fails if LK would reject them)
+        run: |
+          python3 tools/inspect_boot.py hackios-begonia-boot.img
+          python3 tools/inspect_boot.py hackios-begonia-boot-raw.img
       - uses: actions/upload-artifact@v4
         with:
           name: hackios-begonia-boot.img
-          path: hackios-begonia-boot.img
+          path: |
+            hackios-begonia-boot.img
+            hackios-begonia-boot-raw.img
 
   xnu:
     name: XNU kernel for BEGONIA (experimental)
