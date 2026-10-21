@@ -14,9 +14,12 @@ _start:
 	ldr	x28, =__stack_top
 	mov	sp, x28
 
-	/* Zero .bss (LK does not do this for us) — byte-stable loop. */
-	adr	x29, __bss_start
-	adr	x30, __bss_end
+	/* Zero .bss (LK does not do this for us) — byte-stable loop.
+	 * adrp+add instead of adr: the BSS is > 1MB, out of adr range. */
+	adrp	x29, __bss_start
+	add	x29, x29, :lo12:__bss_start
+	adrp	x30, __bss_end
+	add	x30, x30, :lo12:__bss_end
 1:	cmp	x29, x30
 	b.hs	2f
 	strb	wzr, [x29], #1
