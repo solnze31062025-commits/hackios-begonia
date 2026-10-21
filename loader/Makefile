@@ -2,9 +2,9 @@
 # Builds on GitHub runners (clang + lld available) and anywhere LLVM is.
 
 TARGET  := aarch64-none-elf
-CC      ?= clang
-LDFLAGS_TOOL ?= ld.lld
-OBJCOPY ?= llvm-objcopy
+CC      := clang
+LDFLAGS_TOOL := ld.lld
+OBJCOPY := llvm-objcopy
 
 CFLAGS := --target=$(TARGET) -march=armv8-a -mgeneral-regs-only \
           -ffreestanding -fno-builtin -fno-stack-protector \
