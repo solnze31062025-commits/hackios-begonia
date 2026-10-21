@@ -12,21 +12,6 @@
  */
 #include "loader.h"
 
-struct dt_writer {
-	uint8_t *buf;
-	size_t   size;
-	size_t   pos;
-
-	/* current node bookkeeping */
-	struct {
-		size_t nprops_off; /* offset of nProperties word */
-		size_t nchild_off; /* offset of nChildren word */
-		uint32_t nprops;
-		uint32_t nchildren;
-	} nodes[DT_MAX_DEPTH];
-	int depth;
-};
-
 static int
 dt_can_write(struct dt_writer *w, size_t n)
 {

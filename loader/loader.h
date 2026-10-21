@@ -37,7 +37,6 @@ typedef uint64_t addr64_t;
 #define BEGONIA_UART_BAUD        115200
 
 #define BEGONIA_RAM_BASE         0x40000000ULL  /* first DRAM bank */
-#define BEGONIA_RAM_SIZE         0x20000000ULL  /* 4GB/2 TBD: second bank if present */
 
 /* Where LK drops the boot.img payloads. TBD: verify with an LK printf. */
 #define BEGONIA_KERNEL_SLOT_ADDR 0x40080000ULL  /* payload in "kernel" slot (loader) */
