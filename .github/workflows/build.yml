@@ -1,0 +1,61 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  loader:
+    name: stage-2 loader (aarch64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cross toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld llvm
+      - name: Build loader
+        working-directory: loader
+        run: make
+      - uses: actions/upload-artifact@v4
+        with:
+          name: loader
+          path: loader/loader.bin
+
+  bootimg:
+    name: package boot.img
+    runs-on: ubuntu-latest
+    needs: [loader]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: loader
+          path: loader/
+      - name: Build XNU payload slot (placeholder while kernel CI is landing)
+        run: |
+          printf 'NOXNUKERNEL-BRING-UP-PLACEHOLDER' > tools/placeholder-kernel.bin
+      - name: Package boot.img
+        run: |
+          python3 tools/mk_bootimg.py \
+            --kernel loader/loader.bin \
+            --ramdisk tools/placeholder-kernel.bin \
+            --pagesize 2048 \
+            --output hackios-begonia-boot.img
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hackios-begonia-boot.img
+          path: hackios-begonia-boot.img
+
+  xnu:
+    name: XNU kernel for BEGONIA (experimental)
+    runs-on: macos-15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: PowerPointKotik/HackiOS-source
+          path: HackiOS-source
+      - name: Set up xnu build environment
+        run: echo "TODO: xnu-build setup for DEVELOPMENT_BEGONIA.arm64 lands here"
