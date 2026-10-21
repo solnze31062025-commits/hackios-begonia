@@ -33,7 +33,7 @@ def main() -> int:
     p.add_argument("--cmdline", default="debug=0x14e")
     p.add_argument("--pagesize", type=int, default=2048)
     p.add_argument("--base", default="0x40000000")
-    p.add_argument("--kernel-offset", default="0x00008000")
+    p.add_argument("--kernel-offset", default="0x00080000")
     p.add_argument("--ramdisk-offset", default="0x11000000")
     p.add_argument("--second-offset", default="0x00000000")
     p.add_argument("--tags-offset", default="0x00000100")
@@ -80,6 +80,10 @@ def main() -> int:
     assert len(hdr) == 1632
 
     blob = bytearray(hdr)
+    # The header occupies one full page; payloads start at page boundaries.
+    # Without this padding LK reads garbage/zeros as the kernel and resets the
+    # SoC in a loop (logo -> black -> reboot) instead of jumping into it.
+    blob += b"\x00" * (align_up(len(blob), args.pagesize) - len(blob))
     blob += pad_to(kernel, args.pagesize)
     if ramdisk:
         blob += pad_to(ramdisk, args.pagesize)

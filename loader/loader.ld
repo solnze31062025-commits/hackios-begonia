@@ -12,6 +12,12 @@ SECTIONS
 
 	__load_start = .;
 
+	/* ARM64 Linux Image header + branch to the real entry (see image.S). */
+	.image :
+	{
+		*(.image)
+	}
+
 	.text :
 	{
 		*(.text.start)
@@ -23,6 +29,8 @@ SECTIONS
 		*(.rodata*)
 		*(.data*)
 	}
+
+	__payload_end = .;
 
 	.bss (NOLOAD) :
 	{

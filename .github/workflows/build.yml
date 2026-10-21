@@ -54,7 +54,11 @@ jobs:
             --kernel loader/loader.bin \
             --ramdisk tools/placeholder-kernel.bin \
             --pagesize 2048 \
+            --kernel-offset 0x00080000 \
+            --ramdisk-offset 0x11000000 \
             --output hackios-begonia-boot.img
+      - name: Inspect packaged image (what LK will see)
+        run: python3 tools/inspect_boot.py hackios-begonia-boot.img
       - uses: actions/upload-artifact@v4
         with:
           name: hackios-begonia-boot.img

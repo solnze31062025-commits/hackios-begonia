@@ -11,11 +11,11 @@ CFLAGS := --target=$(TARGET) -march=armv8-a -mgeneral-regs-only \
           -fno-asynchronous-unwind-tables -O2 -g \
           -Wall -Wextra -Wno-unused-parameter -Wno-unused-function
 
-OBJS := crt0.o uart.o dt.o mmu.o fb.o font4x6.o main.o
+OBJS := image.o crt0.o uart.o dt.o mmu.o fb.o font4x6.o main.o
 
 all: loader.bin
 
-crt0.o: crt0.S
+%.o: %.S loader.h
 	$(CC) $(CFLAGS) -x assembler-with-cpp -c $< -o $@
 
 %.o: %.c loader.h
