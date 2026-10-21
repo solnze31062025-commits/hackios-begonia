@@ -133,7 +133,22 @@ struct thread_state {
 };
 
 /* dt.c — Apple-format flattened device tree writer */
-struct dt_writer;
+#define DT_MAX_DEPTH  4
+
+struct dt_writer {
+	uint8_t *buf;
+	size_t   size;
+	size_t   pos;
+
+	/* current node bookkeeping */
+	struct {
+		size_t nprops_off; /* offset of nProperties word */
+		size_t nchild_off; /* offset of nChildren word */
+		uint32_t nprops;
+		uint32_t nchildren;
+	} nodes[DT_MAX_DEPTH];
+	int depth;
+};
 
 void dt_init(struct dt_writer *w, void *buf, size_t size);
 void dt_node_open(struct dt_writer *writer, const char *name);

@@ -1,5 +1,8 @@
 name: build
 
+permissions:
+  contents: write
+
 on:
   push:
   workflow_dispatch:
@@ -14,9 +17,19 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang lld llvm
-      - name: Build loader
+      - name: Build loader (capture log)
+        id: build
         working-directory: loader
-        run: make
+        run: make 2>&1 | tee ../build.log; test ${PIPESTATUS[0]} -eq 0
+      - name: Push build log to the logs branch (debug channel)
+        if: failure()
+        run: |
+          git config user.name "ci-log-bot"
+          git config user.email "ci-log-bot@users.noreply.github.com"
+          git checkout -B logs
+          git add -f build.log
+          git commit -m "build log: $(date -u +%FT%TZ) run ${{ github.run_id }}"
+          git push --force origin logs
       - uses: actions/upload-artifact@v4
         with:
           name: loader

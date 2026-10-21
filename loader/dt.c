@@ -12,9 +12,6 @@
  */
 #include "loader.h"
 
-#define DT_MAX_DEPTH  4
-#define DT_MAX_NODES  16
-
 struct dt_writer {
 	uint8_t *buf;
 	size_t   size;
