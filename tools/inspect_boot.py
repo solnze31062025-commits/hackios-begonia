@@ -58,7 +58,7 @@ def describe_arm64_image(blob: bytes, off: int):
         f"  magic@0x38   = {magic!r} "
         + ("(valid ARM64 Image)" if ok else "(MISSING: LK will refuse this payload)"),
     ]
-    return "\n".join(desc)
+    return "\n".join(desc), ok
 
 
 def main() -> int:
@@ -92,6 +92,7 @@ def main() -> int:
     print()
 
     base = hdr_off + page
+    problems = []
     slots = [
         ("kernel", ksize, kaddr),
         ("ramdisk", rsize, raddr),
@@ -110,10 +111,18 @@ def main() -> int:
         else:
             print("  MTK header  : none")
         if name == "kernel":
-            print(describe_arm64_image(blob, payload_off))
+            desc, ok = describe_arm64_image(blob, payload_off)
+            print(desc)
+            if not ok:
+                problems.append("kernel payload is not a valid ARM64 Image")
         base += align_up(size, page)
         print()
 
+    if problems:
+        for p in problems:
+            print(f"ERROR: {p}")
+        return 1
+    print("OK: boot image layout and kernel header look bootable for MTK LK")
     return 0
 
 

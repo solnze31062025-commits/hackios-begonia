@@ -57,7 +57,7 @@ jobs:
             --kernel-offset 0x00080000 \
             --ramdisk-offset 0x11000000 \
             --output hackios-begonia-boot.img
-      - name: Inspect packaged image (what LK will see)
+      - name: Verify packaged image (fails if LK would reject it)
         run: python3 tools/inspect_boot.py hackios-begonia-boot.img
       - uses: actions/upload-artifact@v4
         with:
