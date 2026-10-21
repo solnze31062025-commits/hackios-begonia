@@ -58,4 +58,5 @@ jobs:
           repository: PowerPointKotik/HackiOS-source
           path: HackiOS-source
       - name: Set up xnu build environment
-        run: echo "TODO: xnu-build setup for DEVELOPMENT_BEGONIA.arm64 lands here"
+        run: |
+          echo "TODO: xnu-build setup for DEVELOPMENT_BEGONIA.arm64 lands here"
