@@ -264,7 +264,7 @@ psci_call(uint64_t fn)
 	return (int)x0;
 }
 
-static void
+static void __attribute__((noreturn))
 psci_system_off(void)
 {
 	(void)psci_call(PSCI_SYSTEM_OFF);
@@ -272,6 +272,23 @@ psci_system_off(void)
 	for (;;) {
 		__asm__ volatile("wfe");
 	}
+}
+
+/*
+ * Exception entry (crt0.S installs vectors_el1 with this as the target).
+ *
+ * Deliberately does NOT touch UART or the framebuffer: whatever faulted may
+ * fault again, and a recursive fault would look exactly like a bootloop.
+ * Powering off immediately is the one action that is both safe and
+ * distinguishable: a fault kills the phone within milliseconds while the
+ * healthy path powers off after the multi-second on-screen sequence.
+ */
+void __attribute__((noreturn))
+loader_fault(uint64_t esr, uint64_t sp)
+{
+	(void)esr;
+	(void)sp;
+	psci_system_off();
 }
 
 static void

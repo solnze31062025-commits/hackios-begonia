@@ -222,5 +222,6 @@ void fb_wait_ms(uint32_t ms);
 
 /* main.c */
 void loader_panic(const char *msg);
+void loader_fault(uint64_t esr, uint64_t sp) __attribute__((noreturn));
 
 #endif /* LOADER_LOADER_H */

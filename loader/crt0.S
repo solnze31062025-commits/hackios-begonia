@@ -57,12 +57,42 @@ enter_from_el2:
 	eret
 
 el1_entry:
+	/*
+	 * Take over exceptions before running any C code. Without this a fault
+	 * inside the loader jumps into LK's handlers, which reset the SoC - and
+	 * a reset is indistinguishable from "LK refused our image". With our own
+	 * vectors every fault ends in the same place as the success path: the
+	 * phone stops rebooting.
+	 */
+	adrp	x16, vectors_el1
+	add	x16, x16, :lo12:vectors_el1
+	msr	VBAR_EL1, x16
+	isb
+
 	adrp	x16, loader_main
 	add	x16, x16, :lo12:loader_main
 	blr	x16
 
 loop:
 	b	loop
+
+/*
+ * 16 vector slots of 128 bytes, every one of them ends up in loader_fault()
+ * (declared in main.c). The table has to be 2048-byte aligned for VBAR_EL1.
+ */
+.balign 2048
+.global vectors_el1
+vectors_el1:
+	.rept 16
+	b	fault_entry
+	.balign 128
+	.endr
+
+fault_entry:
+	/* x0 carries ESR_EL1 so the C side can tell a data abort from an SError. */
+	mrs	x0, ESR_EL1
+	mov	x1, sp
+	b	loader_fault
 
 .section .rodata
 panic_el3:
