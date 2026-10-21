@@ -55,7 +55,8 @@ jobs:
             --ramdisk tools/placeholder-kernel.bin \
             --pagesize 2048 \
             --kernel-offset 0x00080000 \
-            --ramdisk-offset 0x11000000 \
+            --ramdisk-offset 0x07c80000 \
+            --tags-offset 0x0bc80000 \
             --output hackios-begonia-boot.img
       - name: Verify packaged image (fails if LK would reject it)
         run: python3 tools/inspect_boot.py hackios-begonia-boot.img

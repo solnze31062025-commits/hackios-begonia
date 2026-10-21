@@ -34,18 +34,19 @@ def main() -> int:
     p.add_argument("--pagesize", type=int, default=2048)
     p.add_argument("--base", default="0x40000000")
     p.add_argument("--kernel-offset", default="0x00080000")
-    p.add_argument("--ramdisk-offset", default="0x11000000")
+    p.add_argument("--ramdisk-offset", default="0x07c80000")
     p.add_argument("--second-offset", default="0x00000000")
-    p.add_argument("--tags-offset", default="0x00000100")
-    p.add_argument("--no-mtk-header", action="store_true",
-                   help="do not prepend MediaTek payload headers")
+    p.add_argument("--tags-offset", default="0x0bc80000")
+    p.add_argument("--mtk-header", action="store_true",
+                   help="prepend MediaTek KERNEL/ROOTFS headers (the stock "
+                        "begonia boot.img has none; enable only if LK asks)")
     p.add_argument("-o", "--output", required=True)
     args = p.parse_args()
 
     kernel = open(args.kernel, "rb").read()
     ramdisk = open(args.ramdisk, "rb").read() if args.ramdisk else b""
 
-    if not args.no_mtk_header:
+    if args.mtk_header:
         kernel  = mtk_header("KERNEL", len(kernel)) + kernel
         if ramdisk:
             ramdisk = mtk_header("ROOTFS", len(ramdisk)) + ramdisk

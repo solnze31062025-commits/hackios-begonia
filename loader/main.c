@@ -262,16 +262,20 @@ loader_main(void)
 	fb_instant_paint();
 
 	uart_early_init();
-	report("HackiOS stage-2 loader (begonia) v0.3 (visual bring-up)");
+	report("HackiOS stage-2 loader (begonia) v0.4 (framebuffer measured)");
+
+#if LOADER_VISUAL_ONLY
+	/* Keep the blue paint on screen briefly, then show the diagnostic
+	 * screen: green window + A/B/C labels at the three candidate
+	 * buffer offsets (which letter is visible tells us the live base). */
+	fb_wait_ms(1200);
+	fb_halt_screen(0xFF0A7A0A, "LOADER RAN OK", "FB WINDOW A/B/C");
+#endif
 
 	if (BEGONIA_FB_PROBE_ENABLE) {
 		fb_probe_cycle();
 	}
 	fb_draw_menu(3);
-
-#if LOADER_VISUAL_ONLY
-	fb_halt_screen(0xFF0A7A0A, "VISUAL STAGE OK", "NO KERNEL LOAD YET");
-#endif
 
 	report("EL/MPIDR state:");
 	uint64_t mpidr;

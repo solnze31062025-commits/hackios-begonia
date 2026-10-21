@@ -1,0 +1,6 @@
+# local build artifacts
+*.o
+loader.elf
+loader.bin
+*.img
+tools/placeholder-kernel.bin

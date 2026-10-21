@@ -38,9 +38,11 @@ typedef uint64_t addr64_t;
 
 #define BEGONIA_RAM_BASE         0x40000000ULL  /* first DRAM bank */
 
-/* Where LK drops the boot.img payloads. TBD: verify with an LK printf. */
+/* Where LK drops the boot.img payloads (verified against the stock boot.img
+ * header of the device: kernel_addr 0x40080000, ramdisk_addr 0x47c80000). */
 #define BEGONIA_KERNEL_SLOT_ADDR 0x40080000ULL  /* payload in "kernel" slot (loader) */
-#define BEGONIA_RAMDISK_ADDR     0x51000000ULL  /* payload in "ramdisk" slot (XNU Mach-O) */
+#define BEGONIA_RAMDISK_ADDR     0x47C80000ULL  /* payload in "ramdisk" slot (XNU Mach-O) */
+#define BEGONIA_TAGS_ADDR        0x4BC80000ULL  /* boot.img tags_addr from the stock header */
 
 /* XNU arm64 unslid link address (VM_KERNEL_LINK_ADDRESS). */
 #define XNU_LINK_ADDRESS         0xFFFFFE0007004000ULL
@@ -64,14 +66,28 @@ typedef uint64_t addr64_t;
 #define LOADER_DT_MAX_SIZE       0x20000ULL /* 128 KB, lives at LOADER_DT_ADDR */
 
 /*
- * Framebuffer (TBD): the address where MTK LK leaves the display RDMA
- * reading pixels. The first build probes candidates on screen; when the
- * user reports "FB#n color appeared", set BEGONIA_FB_DEFAULT to it.
+ * Framebuffer, measured from the device's device tree (TWRP):
+ *   /chosen/atag,videolfb-fb_base_l = 0x7e605000
+ *   /chosen/atag,videolfb-vramSize  = 0x017e8000
+ *   /reserved-memory/mblock-15-framebuffer (mediatek,framebuffer)
+ *        reg = 0x7d9b0000 .. 0x7fc00000
+ *   /sys/class/graphics/fb0: 1088x4680, stride 4352, 32 bpp
+ *        -> panel 1080x2340, stride 1088 px, double buffered
+ *
+ * We paint the whole reserved window so that the live buffer is covered no
+ * matter which of the frame buffers the display engine scans out.
  */
-#define BEGONIA_FB_DEFAULT       0x60000000ULL
+#define BEGONIA_FB_WINDOW_BASE   0x7D9B0000ULL
+#define BEGONIA_FB_WINDOW_SIZE   0x02250000ULL  /* exactly mblock-15: 0x7d9b0000..0x7fc00000 */
+#define BEGONIA_FB_DEFAULT       0x7E605000ULL  /* atag,videolfb-fb_base */
+#define BEGONIA_FB_STRIDE_PX     1088
+#define BEGONIA_FB_WIDTH         1080
+#define BEGONIA_FB_HEIGHT        2340
+#define BEGONIA_FB_BUFFER_SIZE   0x9B6400ULL    /* 1088 * 2340 * 4 */
+
 /* Set to 1 only while the FB address is still unknown: paints candidate
  * addresses in a fast cycle. Keep it off for normal operation. */
-#define BEGONIA_FB_PROBE_ENABLE  1
+#define BEGONIA_FB_PROBE_ENABLE  0
 
 /*
  * Bring-up isolation switch.
@@ -192,7 +208,8 @@ void fb_probe_cycle(void);
 void fb_draw_menu(int countdown_secs);
 void fb_halt_screen(uint32_t bg, const char *line1, const char *line2)
     __attribute__((noreturn));
-void fb_panic(const char *msg);
+void fb_panic(const char *msg) __attribute__((noreturn));
+void fb_wait_ms(uint32_t ms);
 
 /* main.c */
 void loader_panic(const char *msg);
