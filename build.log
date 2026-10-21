@@ -1,0 +1,11 @@
+clang --target=aarch64-none-elf -march=armv8-a -mgeneral-regs-only -ffreestanding -fno-builtin -fno-stack-protector -fno-asynchronous-unwind-tables -O2 -g -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -x assembler-with-cpp -c crt0.S -o crt0.o
+clang --target=aarch64-none-elf -march=armv8-a -mgeneral-regs-only -ffreestanding -fno-builtin -fno-stack-protector -fno-asynchronous-unwind-tables -O2 -g -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -c uart.c -o uart.o
+clang --target=aarch64-none-elf -march=armv8-a -mgeneral-regs-only -ffreestanding -fno-builtin -fno-stack-protector -fno-asynchronous-unwind-tables -O2 -g -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -c dt.c -o dt.o
+clang --target=aarch64-none-elf -march=armv8-a -mgeneral-regs-only -ffreestanding -fno-builtin -fno-stack-protector -fno-asynchronous-unwind-tables -O2 -g -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -c mmu.c -o mmu.o
+clang --target=aarch64-none-elf -march=armv8-a -mgeneral-regs-only -ffreestanding -fno-builtin -fno-stack-protector -fno-asynchronous-unwind-tables -O2 -g -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -c main.c -o main.o
+ld.lld -T loader.ld -nostdlib -z max-page-size=4096 \
+    -o loader.elf crt0.o uart.o dt.o mmu.o main.o
+ld.lld: error: crt0.o:(.text.start+0xc): relocation R_AARCH64_ADR_PREL_LO21 out of range: 1085556 is not in [-1048576, 1048575]; references '__bss_end'
+>>> referenced by crt0.S:19 (/home/runner/work/hackios-begonia/hackios-begonia/loader/crt0.S:19)
+>>> defined in loader.ld:32
+make: *** [Makefile:25: loader.elf] Error 1
