@@ -24,9 +24,7 @@ loader_panic(const char *msg)
 	uart_puts("\n[LOADER PANIC] ");
 	uart_puts(msg);
 	uart_puts("\n");
-	for (;;) {
-		__asm__ volatile("wfe");
-	}
+	fb_panic(msg); /* take over the screen too (infinite loop inside) */
 }
 
 /* ------------------------------------------------------------------ */
@@ -258,7 +256,17 @@ void
 loader_main(void)
 {
 	uart_early_init();
-	report("HackiOS stage-2 loader (begonia) v0.1");
+	report("HackiOS stage-2 loader (begonia) v0.2 (visual)");
+
+	/*
+	 * Visual bring-up, BEFORE anything else:
+	 *   1. screen probe cycle (paint candidate FB addresses)
+	 *   2. boot menu with countdown
+	 * The user reports which probe color was visible; we then fix
+	 * BEGONIA_FB_DEFAULT to that address.
+	 */
+	fb_probe_cycle();
+	fb_draw_menu(5);
 
 	report("EL/MPIDR state:");
 	uint64_t mpidr;

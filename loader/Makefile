@@ -11,7 +11,7 @@ CFLAGS := --target=$(TARGET) -march=armv8-a -mgeneral-regs-only \
           -fno-asynchronous-unwind-tables -O2 -g \
           -Wall -Wextra -Wno-unused-parameter -Wno-unused-function
 
-OBJS := crt0.o uart.o dt.o mmu.o main.o
+OBJS := crt0.o uart.o dt.o mmu.o fb.o font4x6.o main.o
 
 all: loader.bin
 

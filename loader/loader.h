@@ -63,6 +63,13 @@ typedef uint64_t addr64_t;
 #define BEGONIA_RAM_SIZE         0x7B000000ULL
 #define LOADER_DT_MAX_SIZE       0x20000ULL /* 128 KB, lives at LOADER_DT_ADDR */
 
+/*
+ * Framebuffer (TBD): the address where MTK LK leaves the display RDMA
+ * reading pixels. The first build probes candidates on screen; when the
+ * user reports "FB#n color appeared", set BEGONIA_FB_DEFAULT to it.
+ */
+#define BEGONIA_FB_DEFAULT       0x60000000ULL
+
 /* CPU topology (2x A76 + 6x A55, temporary assumption of 2 clusters). */
 #define BEGONIA_CPU_CLUSTER_0    0
 #define BEGONIA_CPU_CLUSTER_1    1
@@ -165,6 +172,11 @@ void uart_putc(char c);
 void uart_puts(const char *s);
 void uart_puts_n(const char *s, uint32_t n);
 void uart_puthex(uint64_t v);
+
+/* fb.c */
+void fb_probe_cycle(void);
+void fb_draw_menu(int countdown_secs);
+void fb_panic(const char *msg);
 
 /* main.c */
 void loader_panic(const char *msg);
