@@ -65,8 +65,8 @@ enter_from_el2:
 	eret
 
 el1_entry:
-	ldr	x0, =loader_main
-	bl	x0
+	ldr	x16, =loader_main
+	blr	x16
 
 	/* never returns */
 loop:
