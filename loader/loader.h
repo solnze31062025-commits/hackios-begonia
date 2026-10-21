@@ -69,6 +69,19 @@ typedef uint64_t addr64_t;
  * user reports "FB#n color appeared", set BEGONIA_FB_DEFAULT to it.
  */
 #define BEGONIA_FB_DEFAULT       0x60000000ULL
+/* Set to 1 only while the FB address is still unknown: paints candidate
+ * addresses in a fast cycle. Keep it off for normal operation. */
+#define BEGONIA_FB_PROBE_ENABLE  1
+
+/*
+ * Bring-up isolation switch.
+ *   1 = visual stage only: paint, probe, menu, then park on a status screen.
+ *       No Mach-O parsing, no kernel copy, no MMU jump. Used while the
+ *       framebuffer address is still unknown, so a wrong guess can never be
+ *       confused with a broken kernel path.
+ *   0 = full boot flow (kernel copy + DT + boot_args + MMU + jump).
+ */
+#define LOADER_VISUAL_ONLY       1
 
 /* CPU topology (2x A76 + 6x A55, temporary assumption of 2 clusters). */
 #define BEGONIA_CPU_CLUSTER_0    0
@@ -174,8 +187,11 @@ void uart_puts_n(const char *s, uint32_t n);
 void uart_puthex(uint64_t v);
 
 /* fb.c */
+void fb_instant_paint(void);
 void fb_probe_cycle(void);
 void fb_draw_menu(int countdown_secs);
+void fb_halt_screen(uint32_t bg, const char *line1, const char *line2)
+    __attribute__((noreturn));
 void fb_panic(const char *msg);
 
 /* main.c */

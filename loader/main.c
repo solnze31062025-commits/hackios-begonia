@@ -255,18 +255,23 @@ report(const char *msg)
 void
 loader_main(void)
 {
-	uart_early_init();
-	report("HackiOS stage-2 loader (begonia) v0.2 (visual)");
-
 	/*
-	 * Visual bring-up, BEFORE anything else:
-	 *   1. screen probe cycle (paint candidate FB addresses)
-	 *   2. boot menu with countdown
-	 * The user reports which probe color was visible; we then fix
-	 * BEGONIA_FB_DEFAULT to that address.
+	 * Screen first, before UART and before anything that can fault.
+	 * If the FB address is right this is instant proof that our code runs.
 	 */
-	fb_probe_cycle();
-	fb_draw_menu(5);
+	fb_instant_paint();
+
+	uart_early_init();
+	report("HackiOS stage-2 loader (begonia) v0.3 (visual bring-up)");
+
+	if (BEGONIA_FB_PROBE_ENABLE) {
+		fb_probe_cycle();
+	}
+	fb_draw_menu(3);
+
+#if LOADER_VISUAL_ONLY
+	fb_halt_screen(0xFF0A7A0A, "VISUAL STAGE OK", "NO KERNEL LOAD YET");
+#endif
 
 	report("EL/MPIDR state:");
 	uint64_t mpidr;

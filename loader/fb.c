@@ -32,25 +32,35 @@
 
 /* Palette for the probe cycle: candidate #i paints color i. */
 static const uint32_t fb_probe_colors[] = {
-	0xFFFF0000, /* 1: red    */
-	0xFF00CC00, /* 2: green  */
-	0xFF0000FF, /* 3: blue   */
-	0xFFFFFF00, /* 4: yellow */
-	0xFFFF00FF, /* 5: magenta*/
-	0xFF00FFFF, /* 6: cyan   */
-	0xFFFF6600, /* 7: orange */
-	0xFF8800FF, /* 8: purple */
-	0xFFFFFFFF, /* 9: white  */
-	0xFF30C030, /* 10: lime  */
+	0xFFFF0000, /*  1: red     */
+	0xFF00CC00, /*  2: green   */
+	0xFF0000FF, /*  3: blue    */
+	0xFFFFFF00, /*  4: yellow  */
+	0xFFFF00FF, /*  5: magenta */
+	0xFF00FFFF, /*  6: cyan    */
+	0xFFFF6600, /*  7: orange  */
+	0xFF8800FF, /*  8: purple  */
+	0xFFFFFFFF, /*  9: white   */
+	0xFF30C030, /* 10: lime    */
+	0xFFFF3399, /* 11: pink    */
+	0xFF009999, /* 12: teal    */
+	0xFF996633, /* 13: brown   */
+	0xFF6666FF, /* 14: violet  */
+	0xFFFFFF66, /* 15: cream   */
 };
 
 static const uint64_t fb_probe_addrs[] = {
 	0x60000000ULL,
+	0x62000000ULL,
+	0x64000000ULL,
+	0x68000000ULL,
+	0x70000000ULL,
+	0x74000000ULL,
 	0x78000000ULL,
+	0x7C000000ULL,
 	0x80000000ULL,
 	0x88000000ULL,
 	0x90000000ULL,
-	0x98000000ULL,
 	0xA0000000ULL,
 	0xA8000000ULL,
 	0xB0000000ULL,
@@ -58,6 +68,10 @@ static const uint64_t fb_probe_addrs[] = {
 };
 
 #define FB_N_CANDIDATES (sizeof(fb_probe_addrs) / sizeof(fb_probe_addrs[0]))
+
+_Static_assert(sizeof(fb_probe_colors) / sizeof(fb_probe_colors[0]) ==
+    sizeof(fb_probe_addrs) / sizeof(fb_probe_addrs[0]),
+    "probe palette and probe address list must have the same length");
 
 /* ------------------------------------------------------------------ */
 
@@ -172,25 +186,54 @@ put_num(char *dst, uint32_t v)
 	dst[n] = 0;
 }
 
-/* Delay using the generic timer (CNTPCT). LK leaves it ticking. */
+/*
+ * Delay. Prefer the generic timer (CNTPCT); LK usually leaves it ticking,
+ * but CNTFRQ may be 0 if only EL2 configured the timer, so fall back to a
+ * plain busy loop. Exact timing does not matter for bring-up: only that a
+ * color stays on screen long enough for a human/video to see it.
+ */
 static void
 wait_ms(uint32_t ms)
 {
-	uint64_t frq;
-	uint64_t start;
+	uint64_t frq = 0;
 	__asm__ volatile("mrs %0, CNTFRQ_EL0" : "=r"(frq));
-	__asm__ volatile("mrs %0, CNTPCT_EL0" : "=r"(start));
-	uint64_t end = start + (frq / 1000) * ms;
-	for (;;) {
-		uint64_t now;
-		__asm__ volatile("mrs %0, CNTPCT_EL0" : "=r"(now));
-		if (now >= end) {
-			break;
+
+	if (frq >= 1000000ULL && frq <= 200000000ULL) {
+		uint64_t start;
+		__asm__ volatile("mrs %0, CNTPCT_EL0" : "=r"(start));
+		uint64_t end = start + (frq / 1000ULL) * (uint64_t)ms;
+		for (;;) {
+			uint64_t now;
+			__asm__ volatile("mrs %0, CNTPCT_EL0" : "=r"(now));
+			if (now >= end) {
+				break;
+			}
 		}
+		return;
+	}
+
+	/* Conservative fallback: ~100k iterations per "ms" at ~1.5 GHz. */
+	volatile uint64_t n = (uint64_t)ms * 100000ULL;
+	while (n-- > 0) {
 	}
 }
 
 /* ------------------------------------------------------------------ */
+
+/*
+ * First thing the loader does: paint the whole screen. No UART, no waits,
+ * no other dependencies — if the FB address is right the user sees a blue
+ * screen with a label immediately, which proves our code executed.
+ */
+void
+fb_instant_paint(void)
+{
+	uint64_t fb = BEGONIA_FB_DEFAULT;
+
+	fb_fill(fb, C_ACCENT);
+	fb_text(fb, 40, 40, "HACKIOS LOADER", 0xFFFFFFFF);
+	fb_text(fb, 40, 40 + CELL_H + 2 * SCALE, "V0.3 BEGONIA", 0xFFFFFFFF);
+}
 
 void
 fb_probe_cycle(void)
@@ -206,7 +249,7 @@ fb_probe_cycle(void)
 		*p++ = '#';
 		put_num(p, i + 1);
 		fb_text(fb_probe_addrs[i], 40, 40 + CELL_H + 3 * SCALE, label, C_WARN);
-		wait_ms(1500);
+		wait_ms(400);
 	}
 }
 
@@ -244,14 +287,25 @@ fb_draw_menu(int countdown_secs)
 	}
 }
 
+/*
+ * Terminal screen: fill with a color, print two lines, then park the CPU.
+ * Used for both panic (red) and "visual stage completed" (green).
+ */
 void
-fb_panic(const char *msg)
+fb_halt_screen(uint32_t bg, const char *line1, const char *line2)
 {
 	uint64_t fb = BEGONIA_FB_DEFAULT;
-	fb_fill(fb, 0xFFAA0000);
-	fb_text(fb, 40, 400, "LOADER PANIC:", 0xFFFFFFFF);
-	fb_text(fb, 40, 400 + CELL_H + SCALE, msg, 0xFFFFFFFF);
+
+	fb_fill(fb, bg);
+	fb_text(fb, 40, 400, line1, 0xFFFFFFFF);
+	fb_text(fb, 40, 400 + CELL_H + SCALE, line2, 0xFFFFFFFF);
 	for (;;) {
 		__asm__ volatile("wfe");
 	}
+}
+
+void
+fb_panic(const char *msg)
+{
+	fb_halt_screen(0xFFAA0000, "LOADER PANIC:", msg);
 }
