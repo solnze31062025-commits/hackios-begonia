@@ -85,6 +85,15 @@ typedef uint64_t addr64_t;
 #define BEGONIA_FB_HEIGHT        2340
 #define BEGONIA_FB_BUFFER_SIZE   0x9B6400ULL    /* 1088 * 2340 * 4 */
 
+/*
+ * pstore / ramoops (mblock-13-pstore). This DRAM survives a warm reset and
+ * the next boot (Android or TWRP) exposes the preserved buffers as
+ * /sys/fs/pstore/pmsg-ramoops-0, console-ramoops, dmesg-ramoops-*.
+ * It is the loader's only crash-proof printf channel: no UART needed.
+ */
+#define BEGONIA_PSTORE_ADDR      0x4D010000ULL
+#define BEGONIA_PSTORE_SIZE      0x000E0000ULL
+
 /* Set to 1 only while the FB address is still unknown: paints candidate
  * addresses in a fast cycle. Keep it off for normal operation. */
 #define BEGONIA_FB_PROBE_ENABLE  0
@@ -209,6 +218,22 @@ void uart_putc(char c);
 void uart_puts(const char *s);
 void uart_puts_n(const char *s, uint32_t n);
 void uart_puthex(uint64_t v);
+
+/* plog.c - log into the pstore region so the next boot can read it */
+void plog_reset(void);
+void plog(const char *msg);
+void plog_hex(const char *tag, uint64_t value);
+void plog_dec(const char *tag, uint64_t value);
+void plog_flush(void);
+
+/* fdt.c - reader for the device tree LK passes in x0 */
+int fdt_valid(uint64_t addr);
+const uint8_t *fdt_chosen_prop(uint64_t addr, const char *want, uint32_t *len_out);
+uint32_t fdt_chosen_u32(uint64_t addr, const char *name);
+const char *fdt_chosen_str(uint64_t addr, const char *name);
+
+/* x0 from LK: physical address of the patched dtb (saved in crt0.S) */
+extern uint64_t g_boot_dtb;
 
 /* fb.c */
 void fb_instant_paint(void);

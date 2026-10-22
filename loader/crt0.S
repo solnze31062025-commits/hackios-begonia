@@ -19,6 +19,15 @@ _start:
 	add	x28, x28, :lo12:__stack_top
 	mov	sp, x28
 
+	/*
+	 * Keep LK's x0: on arm64 the bootloader hands over the physical address
+	 * of the device tree it patched for this boot. It lives in .data, so the
+	 * .bss clearing below cannot wipe it.
+	 */
+	adrp	x9, g_boot_dtb
+	add	x9, x9, :lo12:g_boot_dtb
+	str	x0, [x9]
+
 	/* Zero .bss — byte-stable loop, PC-relative bounds. */
 	adrp	x29, __bss_start
 	add	x29, x29, :lo12:__bss_start
@@ -29,6 +38,15 @@ _start:
 	strb	wzr, [x29], #1
 	b	1b
 2:
+
+	/*
+	 * First log line: from here on the next boot can tell us whether the
+	 * payload ran at all, even if it dies immediately afterwards.
+	 */
+	bl	plog_reset
+	adrp	x0, msg_crt0
+	add	x0, x0, :lo12:msg_crt0
+	bl	plog
 
 	/* CurrentEL: bits[3:2]: 0b0100=EL1, 0b1000=EL2, 0b1100=EL3. */
 	mrs	x27, CurrentEL
@@ -95,6 +113,8 @@ fault_entry:
 	b	loader_fault
 
 .section .rodata
+msg_crt0:
+	.asciz "crt0: payload entered, stack ok, bss cleared"
 panic_el3:
 	.asciz "\n[loader] running at EL3, unsupported\n"
 

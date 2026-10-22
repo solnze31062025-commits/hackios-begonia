@@ -18,6 +18,15 @@
 
 extern uint8_t __stack_top[];         /* crt0.S */
 
+/*
+ * x0 saved by crt0.S: the physical address of the device tree LK patched for
+ * this boot. In .data so the .bss clearing in crt0 cannot wipe it.
+ */
+uint64_t g_boot_dtb __attribute__((section(".data")));
+
+/* Framebuffer base reported by LK for this boot, 0 when unknown. */
+static uint64_t g_fb_live;
+
 void
 loader_panic(const char *msg)
 {
@@ -267,7 +276,8 @@ psci_call(uint64_t fn)
 static void __attribute__((noreturn))
 psci_system_off(void)
 {
-	(void)psci_call(PSCI_SYSTEM_OFF);
+	int rc = psci_call(PSCI_SYSTEM_OFF);
+	plog_hex("psci: SYSTEM_OFF rc", (uint64_t)(uint32_t)rc);
 	/* ATF refused or the call returned: park the CPU instead of resetting. */
 	for (;;) {
 		__asm__ volatile("wfe");
@@ -279,15 +289,24 @@ psci_system_off(void)
  *
  * Deliberately does NOT touch UART or the framebuffer: whatever faulted may
  * fault again, and a recursive fault would look exactly like a bootloop.
- * Powering off immediately is the one action that is both safe and
- * distinguishable: a fault kills the phone within milliseconds while the
- * healthy path powers off after the multi-second on-screen sequence.
+ * The log write is the only risky part, so a nested fault just spins.
  */
 void __attribute__((noreturn))
 loader_fault(uint64_t esr, uint64_t sp)
 {
-	(void)esr;
-	(void)sp;
+	static volatile int nested;
+
+	if (nested) {
+		for (;;) {
+			__asm__ volatile("wfe");
+		}
+	}
+	nested = 1;
+
+	plog("FAULT: exception taken");
+	plog_hex("FAULT: ESR_EL1", esr);
+	plog_hex("FAULT: SP", sp);
+
 	psci_system_off();
 }
 
@@ -302,14 +321,40 @@ report(const char *msg)
 void
 loader_main(void)
 {
-	/*
-	 * Screen first, before UART and before anything that can fault.
-	 * If the FB address is right this is instant proof that our code runs.
-	 */
+	uint64_t current_el;
+	__asm__ volatile("mrs %0, CurrentEL" : "=r"(current_el));
+
+	plog("main: C code reached");
+	plog_hex("main: CurrentEL", current_el);
+	plog_hex("main: x0 from LK (dtb)", g_boot_dtb);
+
+	/* What did LK actually hand over for this boot? */
+	if (fdt_valid(g_boot_dtb)) {
+		uint32_t lo   = fdt_chosen_u32(g_boot_dtb, "atag,videolfb-fb_base_l");
+		uint32_t hi   = fdt_chosen_u32(g_boot_dtb, "atag,videolfb-fb_base_h");
+		uint32_t vram = fdt_chosen_u32(g_boot_dtb, "atag,videolfb-vramSize");
+		uint32_t inited = fdt_chosen_u32(g_boot_dtb, "atag,videolfb-islcm_inited");
+		const char *lcm = fdt_chosen_str(g_boot_dtb, "atag,videolfb-lcmname");
+
+		g_fb_live = ((uint64_t)hi << 32) | (uint64_t)lo;
+
+		plog("dtb: valid FDT from LK");
+		plog_hex("dtb: atag,videolfb-fb_base", g_fb_live);
+		plog_hex("dtb: atag,videolfb-vramSize", vram);
+		plog(inited ? "dtb: lcm inited by LK" : "dtb: lcm NOT inited by LK");
+		if (lcm && lcm[0]) {
+			plog("dtb: lcm name present");
+		}
+	} else {
+		plog("dtb: x0 from LK is not a valid FDT");
+	}
+
+	/* We are executing; now try to show it. */
 	fb_instant_paint();
+	plog("fb: whole window painted");
 
 	uart_early_init();
-	report("HackiOS stage-2 loader (begonia) v0.5 (v2 boot image + dtb)");
+	report("HackiOS stage-2 loader (begonia) v0.6 (pstore logging)");
 
 #if LOADER_EXEC_PROOF
 	/*
@@ -317,12 +362,13 @@ loader_main(void)
 	 *   blue window  -> code executes
 	 *   green status -> framebuffer offsets
 	 *   power off    -> ATF/heartbeat still alive, i.e. we own the SoC
-	 * If LK refuses the image nothing of this happens and we get a loop.
 	 */
 	fb_wait_ms(1500);
 	fb_status_screen(0xFF0A7A0A, "LOADER RAN OK", "FB WINDOW A/B/C");
+	plog("fb: status screen drawn");
 	fb_wait_ms(2500);
-	report("proof mode: PSCI SYSTEM_OFF");
+
+	plog("psci: calling SYSTEM_OFF");
 	psci_system_off();
 #endif
 

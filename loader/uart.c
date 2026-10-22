@@ -46,8 +46,18 @@ uart_putc(char c)
 	if (!g_uart.enabled) {
 		return;
 	}
-	while (!(uart_read(UART_LSR) & UART_LSR_THRE))
-		;
+	/*
+	 * Bounded wait: if LK left the UART clock gated, THRE never comes up and
+	 * an unbounded spin would freeze the CPU (indistinguishable from a hang
+	 * we are trying to debug). Give up once and disable the console.
+	 */
+	uint32_t spins = 0;
+	while (!(uart_read(UART_LSR) & UART_LSR_THRE)) {
+		if (++spins > 200000U) {
+			g_uart.enabled = 0;
+			return;
+		}
+	}
 	uart_write(UART_THR, (uint8_t)c);
 }
 
