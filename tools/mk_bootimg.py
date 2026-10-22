@@ -47,7 +47,8 @@ def pad_to(b: bytes, page: int) -> bytes:
     return b + b"\x00" * (align_up(len(b), page) - len(b))
 
 
-def build_header(args, ksize, kaddr, rsize, raddr, ssize, saddr, dsize, daddr):
+def build_header(args, ksize, kaddr, rsize, raddr, ssize, saddr, dsize, daddr,
+                 tags_addr):
     cmdline = args.cmdline.encode()
     if len(cmdline) > 512:
         raise SystemExit("cmdline too long")
@@ -57,10 +58,10 @@ def build_header(args, ksize, kaddr, rsize, raddr, ssize, saddr, dsize, daddr):
         ksize, kaddr,
         rsize, raddr,
         ssize, saddr,
-        saddr,                    # tags_addr == dtb_addr on this device
+        tags_addr,
         args.pagesize,
         args.header_version,
-        0,                        # os_version
+        int(args.os_version, 0),
         b"\x00" * 16,             # product name
         cmdline + b"\x00" * (512 - len(cmdline)),
         b"\x00" * 32,             # id hash
@@ -89,6 +90,8 @@ def main() -> int:
     p.add_argument("--cmdline", default=STOCK_CMDLINE)
     p.add_argument("--pagesize", type=int, default=2048)
     p.add_argument("--header-version", type=int, default=2, choices=(0, 1, 2))
+    p.add_argument("--os-version", default="0x200001a9",
+                   help="stock begonia value; AVB rollback metadata")
     p.add_argument("--base", default="0x40000000")
     p.add_argument("--kernel-offset", default="0x00080000")
     p.add_argument("--ramdisk-offset", default="0x07c80000")
@@ -121,7 +124,8 @@ def main() -> int:
         raise SystemExit("header v2 needs --dtb (LK patches it while booting)")
 
     hdr = build_header(args, len(kernel), kernel_addr, len(ramdisk),
-                       ramdisk_addr, 0, second_addr, len(dtb), dtb_addr)
+                       ramdisk_addr, 0, 0, len(dtb), dtb_addr,
+                       tags_addr)
 
     blob = bytearray(hdr)
     # The header occupies whole pages; payloads start at page boundaries.
@@ -136,10 +140,11 @@ def main() -> int:
         f.write(blob)
 
     print(f"boot.img written: {args.output} ({len(blob)} bytes)")
-    print(f"  header      : v{args.header_version}, page {args.pagesize}")
+    print(f"  header      : v{args.header_version}, page {args.pagesize}, os {args.os_version}")
     print(f"  kernel slot : {len(kernel)} bytes @ {kernel_addr:#x}")
     print(f"  ramdisk slot: {len(ramdisk)} bytes @ {ramdisk_addr:#x}")
     print(f"  dtb         : {len(dtb)} bytes @ {dtb_addr:#x}")
+    print(f"  tags        : @ {tags_addr:#x}")
     return 0
 
 

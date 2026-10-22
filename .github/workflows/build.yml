@@ -50,18 +50,18 @@ jobs:
           printf 'NOXNUKERNEL-BRING-UP-PLACEHOLDER' > tools/placeholder-kernel.bin
       - name: Compress loader the way the stock image does
         run: gzip -9 -n -c loader/loader.bin > loader/loader.bin.gz
-      - name: Package boot.img (gzip kernel, header v2 + stock dtb)
+      - name: Package boot.img (gzip kernel, header v2 + stock dtb + stock ramdisk)
         run: |
           python3 tools/mk_bootimg.py \
             --kernel loader/loader.bin.gz \
-            --ramdisk tools/placeholder-kernel.bin \
+            --ramdisk tools/stock-begonia-ramdisk.bin \
             --dtb tools/stock-begonia.dtb \
             --output hackios-begonia-boot.img
-      - name: Package boot.img (raw Image kernel, header v2 + stock dtb)
+      - name: Package boot.img (raw Image kernel, header v2 + stock dtb + stock ramdisk)
         run: |
           python3 tools/mk_bootimg.py \
             --kernel loader/loader.bin \
-            --ramdisk tools/placeholder-kernel.bin \
+            --ramdisk tools/stock-begonia-ramdisk.bin \
             --dtb tools/stock-begonia.dtb \
             --output hackios-begonia-boot-raw.img
       - name: Verify packaged images (fails if LK would reject them)

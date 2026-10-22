@@ -109,12 +109,19 @@ typedef uint64_t addr64_t;
 #define LOADER_VISUAL_ONLY       1
 
 /*
- * Proof-of-execution mode: paint the screen, wait a few seconds and then
- * power the SoC off through PSCI (SMC). If the phone stops rebooting (goes
- * off or freezes) instead of looping, our code definitely executed - even
- * with a completely dark screen.
+ * Proof-of-execution mode.
+ *
+ * The phone has no UART and pstore does not survive a full boot (the next
+ * kernel overwrites every ramoops zone), so execution is proven by *timing*
+ * instead of by a log:
+ *
+ *   0 = disabled (normal boot flow)
+ *   1 = paint, wait ~4 s, then PSCI SYSTEM_OFF
+ *   2 = leave immediately: PSCI SYSTEM_OFF, else SYSTEM_RESET, else freeze.
+ *       LK's own failure loop takes ~7 s, so an immediate power-off or an
+ *       immediate reboot is an unambiguous "our code ran".
  */
-#define LOADER_EXEC_PROOF        1
+#define LOADER_EXEC_PROOF        2
 
 /* CPU topology (2x A76 + 6x A55, temporary assumption of 2 clusters). */
 #define BEGONIA_CPU_CLUSTER_0    0

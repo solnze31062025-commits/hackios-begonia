@@ -310,6 +310,25 @@ loader_fault(uint64_t esr, uint64_t sp)
 	psci_system_off();
 }
 
+/*
+ * Leave the device in a state that LK's own failure path cannot produce:
+ * power off, else reset, else freeze. Any of the three is fast, while the
+ * LK crash loop on this device takes about seven seconds.
+ */
+static void __attribute__((noreturn))
+psci_off_or_reset(void)
+{
+	int rc = psci_call(PSCI_SYSTEM_OFF);
+	plog_hex("psci: SYSTEM_OFF rc", (uint64_t)(uint32_t)rc);
+
+	rc = psci_call(PSCI_SYSTEM_RESET);
+	plog_hex("psci: SYSTEM_RESET rc", (uint64_t)(uint32_t)rc);
+
+	for (;;) {
+		__asm__ volatile("wfe");
+	}
+}
+
 static void
 report(const char *msg)
 {
@@ -348,6 +367,16 @@ loader_main(void)
 	} else {
 		plog("dtb: x0 from LK is not a valid FDT");
 	}
+
+#if LOADER_EXEC_PROOF == 2
+	/*
+	 * Fast proof. No framebuffer, no delays: if the phone powers off or
+	 * reboots within a fraction of a second instead of after the usual
+	 * ~7 s LK failure, the payload really executed.
+	 */
+	plog("proof2: leaving immediately");
+	psci_off_or_reset();
+#endif
 
 	/* We are executing; now try to show it. */
 	fb_instant_paint();
